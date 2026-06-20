@@ -1,0 +1,27 @@
+# dependencies / build output
+node_modules/
+dist/
+
+# generated print artifacts — regenerated from any name, no need to track
+pipeline/out/
+
+# the printer's OWN web app, downloaded only to read its protocol.
+# This is Creality's proprietary code — kept locally for reference, never redistributed.
+pipeline/printer-ui/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log
+
+# superseded React UI prototype + old render (local only, not part of the repo)
+/src/
+/index.html
+/package.json
+/package-lock.json
+/vite.config.ts
+/tsconfig.json
+/tsconfig.node.json
+/keyforge-home.png
+/keyforge-after-submit.png
+/docs/keychain.png
