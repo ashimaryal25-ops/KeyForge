@@ -81,6 +81,18 @@ async function apiPrint(req, res) {
     grams = Number(text.match(/; total filament used \[g\] = ([\d.]+)/)?.[1]) || null;
   }
   let printed = null;
+  if (ok && body.start && existsSync(gcode)) {
+    try {
+      const target = body.printer ? { ip: body.printer, id: "manual" } : await pickFreePrinter();
+      if (!target) printed = { ok: false, error: "no free printer" };
+      else {
+        const result = await uploadAndPrint(target.ip, gcode);
+        printed = { ok: true, printer: target.id, ip: target.ip, confirmed: result.confirmed };
+      }
+    } catch (error) {
+      printed = { ok: false, error: String(error.message || error) };
+    }
+  }
 
   send(res, 200, "application/json", JSON.stringify({ ok, log, seconds, grams, printed }));
 }
