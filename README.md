@@ -5,6 +5,8 @@ name at a kiosk; the system generates a 3D model, validates it, slices it, picks
 printer, uploads the job, and starts the print — **no manual modeling, no slicer, no USB
 stick, and no rooting the printers.**
 
+![A GETTYSBURG name keychain printed by KeyForge](docs/keychain.jpg)
+
 ```
 name → OpenSCAD model → STL → PrusaSlicer → G-code → pick a free printer → upload + start
 ```
@@ -24,6 +26,16 @@ name → OpenSCAD model → STL → PrusaSlicer → G-code → pick a free print
   one's live free/busy status — all over that same stock socket.
 - **Unattended-ready.** An eject G-code profile sweeps the finished keychain off the bed
   after cooldown, so the farm can run without a person clearing beds.
+
+## In action
+
+The kiosk — type a name, hit forge:
+
+![The KeyForge kiosk](docs/kiosk.png)
+
+A name printing on the farm:
+
+![A keychain printing on the bed](docs/printing.jpg)
 
 ## Files
 
