@@ -7,7 +7,7 @@
 // /usr/data/printer_data/gcodes (confirmed from a live print). Override with GCODE_DIR if needed.
 //
 // Run directly to upload + start a print (test the protocol on real hardware):
-//   node pipeline/creality.mjs <printer-ip> pipeline/out/kf_ashim_letters.gcode
+//   node pipeline/creality.mjs <printer-ip> pipeline/out/kf_ashim.gcode
 //
 // Zero dependencies — native fetch / FormData / Blob / WebSocket (Node 22+).
 
@@ -73,7 +73,7 @@ export async function uploadAndPrint(ip, filePath) {
 }
 
 // run directly = test on real hardware
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [ip, file] = process.argv.slice(2);
   if (!ip || !file) {
     console.error("usage: node pipeline/creality.mjs <printer-ip> <gcode-file>");

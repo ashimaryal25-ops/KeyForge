@@ -10,6 +10,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const OPENSCAD = process.env.OPENSCAD ?? String.raw`C:\Program Files\OpenSCAD\openscad.com`;
 const SLICER = process.env.SLICER ?? String.raw`C:\Program Files\Prusa3D\PrusaSlicer\prusa-slicer-console.exe`;
@@ -18,86 +19,91 @@ const PRINTER_URL = process.env.PRINTER_URL ?? "http://192.168.1.50:7125";
 const here = import.meta.dirname;
 const SCAD = path.join(here, "keychain.scad");
 
-const args = process.argv.slice(2);
-const dryRun = args.includes("--dry-run");
-const startPrint = args.includes("--start");
-const style = args.includes("--tag") ? "tag" : "letters";
-const name = args.filter((a) => !a.startsWith("--")).join(" ").trim().toUpperCase();
+// Everything below runs only when this file is the command being run — the same
+// guard creality.mjs uses, i.e. Python's `if __name__ == "__main__":`. Without
+// it, importing this module to reach the parsing helpers underneath would spawn
+// OpenSCAD and call process.exit() as a side effect of the import.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const args = process.argv.slice(2);
+  const dryRun = args.includes("--dry-run");
+  const startPrint = args.includes("--start");
+  const name = args.filter((a) => !a.startsWith("--")).join(" ").trim().toUpperCase();
 
-// Letters and digits only. This keeps the OpenSCAD -D argument injection-safe and
-// prevents floating disconnected separators in letters style.
-if (!/^[A-Z0-9]{2,10}$/.test(name)) {
-  console.error(`bad name "${name}" - use 2-10 letters/digits, nothing else`);
-  process.exit(1);
+  // Letters and digits only. This keeps the OpenSCAD -D argument injection-safe and
+  // prevents floating disconnected separators in letters style.
+  if (!/^[A-Z0-9]{2,10}$/.test(name)) {
+    console.error(`bad name "${name}" - use 2-10 letters/digits, nothing else`);
+    process.exit(1);
+  }
+
+  const PROFILE = path.join(here, "keyforge.ini");
+
+  if (!existsSync(PROFILE)) {
+    console.error(`missing ${PROFILE}`);
+    console.error("Open PrusaSlicer, set up the Ender 3 V3 KE profile once, then File > Export > Export Config to this path.");
+    process.exit(1);
+  }
+
+  const outDir = path.join(here, "out");
+  mkdirSync(outDir, { recursive: true });
+  const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "_");
+  const stl = path.join(outDir, `${slug}.stl`);
+  const gcode = path.join(outDir, `kf_${slug}.gcode`);
+  console.log(`[1/3] OpenSCAD: "${name}" -> ${path.basename(stl)}`);
+  const scad = spawnSync(OPENSCAD, ["-o", stl, "-D", `name="${name}"`, SCAD], {
+    encoding: "utf8",
+  });
+  const scadLog = (scad.stdout ?? "") + (scad.stderr ?? "");
+  process.stdout.write(scadLog);
+  if (scad.status !== 0) process.exit(scad.status ?? 1);
+
+  // "Volumes: 2" = inside + outside = one connected solid. More means loose pieces.
+  const volumes = Number(scadLog.match(/Volumes:\s*(\d+)/)?.[1] ?? NaN);
+  if (volumes !== 2) {
+    console.error(`geometry check FAILED: "${name}" renders as ${volumes - 1} separate pieces.`);
+    console.error("letters in this name do not touch - try a different name");
+    process.exit(1);
+  }
+  console.log("geometry check passed: one connected solid");
+
+  console.log(`[2/3] slicing -> ${path.basename(gcode)}`);
+  execFileSync(SLICER, ["--export-gcode", "--load", PROFILE, "--center", "110,110", "--output", gcode, stl], {
+    stdio: "inherit",
+  });
+  addCrealityMetadata(gcode);
+
+  if (dryRun) {
+    console.log(`dry run done - open ${gcode} in the slicer GUI to preview before trusting it`);
+    process.exit(0);
+  }
+
+  console.log(`[3/3] uploading to ${PRINTER_URL}${startPrint ? " and starting print" : ""}`);
+  const info = await fetch(`${PRINTER_URL}/server/info`).catch((error) => error);
+  if (info instanceof Error || !info.ok) {
+    const detail = info instanceof Error ? info.message : `HTTP ${info.status} - ${await info.text()}`;
+    console.error(`printer preflight failed: ${detail}`);
+    console.error(`check the IP, then run: node pipeline/printer-probe.mjs ${PRINTER_URL}`);
+    process.exit(1);
+  }
+
+  const form = new FormData();
+  form.append("file", new Blob([readFileSync(gcode)]), path.basename(gcode));
+  form.append("print", startPrint ? "true" : "false");
+
+  const res = await fetch(`${PRINTER_URL}/server/files/upload`, { method: "POST", body: form });
+  if (!res.ok) {
+    console.error(`upload failed: HTTP ${res.status} - ${await res.text()}`);
+    process.exit(1);
+  }
+
+  const payload = await res.json();
+  console.log("accepted:", JSON.stringify(payload));
+  if (!startPrint) {
+    console.log("uploaded only. To start automatically, rerun with --start after confirming the bed is clear.");
+  }
 }
 
-const PROFILE = path.join(here, "keyforge.ini");
-
-if (!existsSync(PROFILE)) {
-  console.error(`missing ${PROFILE}`);
-  console.error("Open PrusaSlicer, set up the Ender 3 V3 KE profile once, then File > Export > Export Config to this path.");
-  process.exit(1);
-}
-
-const outDir = path.join(here, "out");
-mkdirSync(outDir, { recursive: true });
-const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "_");
-const stl = path.join(outDir, `${slug}_${style}.stl`);
-const gcode = path.join(outDir, `kf_${slug}_${style}.gcode`);
-console.log(`[1/3] OpenSCAD: "${name}" (${style}) -> ${path.basename(stl)}`);
-const scad = spawnSync(OPENSCAD, ["-o", stl, "-D", `name="${name}"`, "-D", `style="${style}"`, SCAD], {
-  encoding: "utf8",
-});
-const scadLog = (scad.stdout ?? "") + (scad.stderr ?? "");
-process.stdout.write(scadLog);
-if (scad.status !== 0) process.exit(scad.status ?? 1);
-
-// "Volumes: 2" = inside + outside = one connected solid. More means loose pieces.
-const volumes = Number(scadLog.match(/Volumes:\s*(\d+)/)?.[1] ?? NaN);
-if (volumes !== 2) {
-  console.error(`geometry check FAILED: "${name}" renders as ${volumes - 1} separate pieces in ${style} style.`);
-  console.error("letters in this name do not touch - print it as a solid tag instead: add --tag");
-  process.exit(1);
-}
-console.log("geometry check passed: one connected solid");
-
-console.log(`[2/3] slicing -> ${path.basename(gcode)}`);
-execFileSync(SLICER, ["--export-gcode", "--load", PROFILE, "--center", "110,110", "--output", gcode, stl], {
-  stdio: "inherit",
-});
-addCrealityMetadata(gcode);
-
-if (dryRun) {
-  console.log(`dry run done - open ${gcode} in the slicer GUI to preview before trusting it`);
-  process.exit(0);
-}
-
-console.log(`[3/3] uploading to ${PRINTER_URL}${startPrint ? " and starting print" : ""}`);
-const info = await fetch(`${PRINTER_URL}/server/info`).catch((error) => error);
-if (info instanceof Error || !info.ok) {
-  const detail = info instanceof Error ? info.message : `HTTP ${info.status} - ${await info.text()}`;
-  console.error(`printer preflight failed: ${detail}`);
-  console.error(`check the IP, then run: node pipeline/printer-probe.mjs ${PRINTER_URL}`);
-  process.exit(1);
-}
-
-const form = new FormData();
-form.append("file", new Blob([readFileSync(gcode)]), path.basename(gcode));
-form.append("print", startPrint ? "true" : "false");
-
-const res = await fetch(`${PRINTER_URL}/server/files/upload`, { method: "POST", body: form });
-if (!res.ok) {
-  console.error(`upload failed: HTTP ${res.status} - ${await res.text()}`);
-  process.exit(1);
-}
-
-const payload = await res.json();
-console.log("accepted:", JSON.stringify(payload));
-if (!startPrint) {
-  console.log("uploaded only. To start automatically, rerun with --start after confirming the bed is clear.");
-}
-
-function addCrealityMetadata(filePath) {
+export function addCrealityMetadata(filePath) {
   const original = readFileSync(filePath, "utf8");
   if (original.startsWith(";KEYFORGE_META:1")) return;
 
@@ -128,7 +134,7 @@ function addCrealityMetadata(filePath) {
   console.log(`Creality metadata added: ${seconds}s, ${layerCount} layers`);
 }
 
-function parsePrusaTimeSeconds(gcodeText) {
+export function parsePrusaTimeSeconds(gcodeText) {
   const estimate = gcodeText.match(/; estimated printing time \(normal mode\) = ([^\r\n]+)/)?.[1];
   if (!estimate) return 0;
 
@@ -142,7 +148,7 @@ function parsePrusaTimeSeconds(gcodeText) {
   return seconds;
 }
 
-function calculateBounds(gcodeText) {
+export function calculateBounds(gcodeText) {
   const bounds = {
     minX: Infinity,
     minY: Infinity,
@@ -169,7 +175,7 @@ function calculateBounds(gcodeText) {
   return bounds;
 }
 
-function updateAxis(bounds, axis, line) {
+export function updateAxis(bounds, axis, line) {
   const value = Number(line.match(new RegExp(`\\b${axis}(-?\\d+(?:\\.\\d+)?)`))?.[1] ?? NaN);
   if (!Number.isFinite(value)) return;
 
