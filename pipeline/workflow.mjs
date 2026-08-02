@@ -558,7 +558,16 @@ export class WorkflowManager {
   }
 
   async dispatchNextJobs() {
-    return;
+    if (!this.autoDispatch || this.queue.length === 0) return;
+
+    for (const printer of this.printers) {
+      if (this.queue.length === 0) break;
+      if (!this.isEligibleForDispatch(printer.ip)) continue;
+
+      const job = this.queue.shift();
+      this.persistState();
+      await this._executeJobUpload(printer, job);
+    }
   }
 
   async assignJobToPrinter(ip, jobId) {
@@ -590,6 +599,9 @@ export class WorkflowManager {
     this.isSweeping = true;
     try {
       await this.updatePrinterStates();
+      if (this.autoDispatch) {
+        await this.dispatchNextJobs();
+      }
     } catch (err) {
       // sweep error must not crash background polling
     } finally {
