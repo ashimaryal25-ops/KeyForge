@@ -128,10 +128,14 @@ test("POST /api/jobs rejects bad names before shelling out to the toolchain", as
 
 /* ---------- job lifecycle over HTTP ---------- */
 
-test("a queued job can be deleted through the API", async () => {
+test("a queued job can be downloaded and deleted through the API", async () => {
   await withServer(async (base, manager) => {
     await withFixtureGcode("DLTEST", async ({ filename, filepath }) => {
       const job = manager.addJob({ name: "DLTEST", filename, filepath, seconds: 600, grams: 2.5 });
+
+      const dl = await fetch(`${base}/api/jobs/${job.id}/gcode`);
+      assert.equal(dl.status, 200);
+      assert.match(await dl.text(), /KEYFORGE_TEST/, "serves the real file from pipeline/out");
 
       const del = await fetch(`${base}/api/jobs/${job.id}`, { method: "DELETE" });
       assert.equal(del.status, 200);
@@ -145,6 +149,7 @@ test("a queued job can be deleted through the API", async () => {
 
 test("unknown job ids are 404s, not crashes", async () => {
   await withServer(async (base) => {
+    assert.equal((await fetch(`${base}/api/jobs/nope/gcode`)).status, 404);
     assert.equal((await fetch(`${base}/api/jobs/nope`, { method: "DELETE" })).status, 404);
     assert.equal((await fetch(`${base}/api/jobs/nope/requeue`, { method: "POST" })).status, 404);
   });

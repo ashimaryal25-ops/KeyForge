@@ -67,6 +67,11 @@ export function createKeyForgeServer(options = {}) {
         return apiRequeueJob(requeueMatch[1], res, manager);
       }
 
+      const gcodeMatch = url.pathname.match(/^\/api\/jobs\/([^\/]+)\/gcode$/);
+      if (gcodeMatch && req.method === "GET") {
+        return apiDownloadGcode(gcodeMatch[1], res, manager);
+      }
+
       const jobMatch = url.pathname.match(/^\/api\/jobs\/([^\/]+)$/);
       if (jobMatch && req.method === "DELETE") {
         return apiDeleteJob(jobMatch[1], res, manager);
@@ -244,6 +249,27 @@ function apiRequeueJob(id, res, manager) {
     return send(res, 409, "application/json", JSON.stringify({ error: result.error }));
   }
   return send(res, 200, "application/json", JSON.stringify({ ok: true, job: toPublicJob(result.job) }));
+}
+
+function apiDownloadGcode(id, res, manager) {
+  const job = manager.getJobById(id);
+  if (!job) {
+    return send(res, 404, "text/plain", "job not found");
+  }
+  if (!isPathInsideDir(job.filepath, OUT)) {
+    return send(res, 403, "text/plain", "access denied");
+  }
+  if (!existsSync(job.filepath)) {
+    return send(res, 404, "text/plain", "gcode file not found");
+  }
+
+  const filename = path.basename(job.filepath);
+  const content = readFileSync(job.filepath);
+  res.writeHead(200, {
+    "content-type": "text/x-gcode",
+    "content-disposition": `attachment; filename="${filename.replace(/"/g, "")}"`
+  });
+  res.end(content);
 }
 
 async function apiPrint(req, res, manager) {
