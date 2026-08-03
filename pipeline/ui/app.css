@@ -1,0 +1,24 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  color: #e8edf5;
+  background: #111827;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+.shell { max-width: 1180px; margin: 0 auto; }
+.dashboard { display: grid; gap: 16px; }
+.panel {
+  padding: 20px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #1e293b;
+}
+.hidden { display: none !important; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.status-free { background: #22c55e; }
+.status-busy { background: #f59e0b; }
+.status-error { background: #ef4444; }
