@@ -1,32 +1,24 @@
-// KeyForge farm status — NO ROOT, NO DEPENDENCIES.
+// KeyForge farm status - NO ROOT, NO DEPENDENCIES.
 // Connects to each printer's stock Creality WebSocket (port 9999) and reports free/busy.
 // Node 22+ ships a global WebSocket, so this needs no npm packages and no Moonraker.
 //
 // Usage:
-//   node pipeline/farm-status.mjs 10.158.163.29 10.158.163.30 10.158.163.31
-//   node pipeline/farm-status.mjs --raw 10.158.163.29     (dump every field the printer sends)
-//   or list printers in pipeline/printers.json: [{ "id": "A", "ip": "10.158.163.29" }, ...]
+//   node pipeline/farm-status.mjs 192.168.137.70 192.168.137.184 192.168.137.215
+//   node pipeline/farm-status.mjs --raw 192.168.137.70
 //
-// The free/busy guess below is based on the ha_creality_ws integration's field names.
-// If a printer reports wrong, run with --raw, paste the real fields, and we fix judge().
+// IPs are always passed in. The farm sits on a DHCP hotspot, so there is no
+// saved printer list to read — run a scan from the dashboard to find current
+// addresses, or pass them here directly.
 
-import { readFileSync, existsSync } from "node:fs";
-import path from "node:path";
-
-const here = import.meta.dirname;
-const PRINTERS_JSON = path.join(here, "printers.json");
 const PROBE_MS = 5000;
 
 const args = process.argv.slice(2);
 const raw = args.includes("--raw");
 const ipArgs = args.filter((a) => !a.startsWith("--"));
 
-let printers = ipArgs.map((ip, i) => ({ id: String(i + 1), ip }));
-if (printers.length === 0 && existsSync(PRINTERS_JSON)) {
-  printers = JSON.parse(readFileSync(PRINTERS_JSON, "utf8"));
-}
+const printers = ipArgs.map((ip, i) => ({ id: String(i + 1), ip }));
 if (printers.length === 0) {
-  console.error("usage: node pipeline/farm-status.mjs <ip> [ip...]   (or create printers.json)");
+  console.error("usage: node pipeline/farm-status.mjs <ip> [ip...]");
   process.exit(1);
 }
 
@@ -35,7 +27,10 @@ if (typeof WebSocket === "undefined") {
   process.exit(1);
 }
 
-const results = await Promise.all(printers.map(probe));
+const results = [];
+for (const printer of printers) {
+  results.push(await probe(printer));
+}
 
 if (raw) {
   for (const r of results) {
@@ -77,7 +72,6 @@ function probe(printer) {
     }
 
     ws.addEventListener("open", () => {
-      // nudge the printer to dump a full status object
       ws.send(JSON.stringify({ method: "get", params: { reqPrintObjects: 1 } }));
       ws.send(JSON.stringify({ method: "get", params: { ReqPrinterPara: 1 } }));
     });
@@ -94,10 +88,17 @@ function probe(printer) {
 }
 
 function judge(s) {
-  if (Object.keys(s).length === 0) return { status: "no data", job: "(silent — see --raw)" };
+  if (Object.keys(s).length === 0) return { status: "no data", job: "(silent - see --raw)" };
   const fname = s.printFileName || "";
   const prog = s.printProgress ?? s.dProgress;
   const ds = s.deviceState ?? s.state;
+  const targetNozzle = Number(s.targetNozzleTemp ?? 0);
+  const targetBed = Number(s.targetBedTemp0 ?? s.targetBedTemp ?? 0);
+  const runningStates = new Set([1, 2, 3, 5]);
+
+  if (!runningStates.has(Number(ds)) && targetNozzle === 0 && targetBed === 0) {
+    return { status: "free", job: fname ? `${fname} (stopped)` : "-" };
+  }
   if (ds === 5 || s.pause === 1 || s.paused === 1) return { status: "paused", job: fname || "?" };
   if (fname && prog != null && Number(prog) < 100) return { status: "busy", job: `${fname} ${prog}%` };
   return { status: "free", job: fname ? `${fname} (done)` : "-" };
