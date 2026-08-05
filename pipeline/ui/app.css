@@ -1,24 +1,929 @@
+/* KeyForge production console.
+   Dark navy is the default look; light is the alternate via the header toggle.
+
+   Colour discipline, in order of priority:
+   - No untinted neutrals. Every grey in here is pulled toward the cobalt, so
+     the chrome belongs to the brand instead of sitting in default browser grey.
+   - Colour marks zones and states, never decorates. Each panel carries the hue
+     of what it does — orange for the one action, cobalt for the operational
+     lists — and status colours are a separate scale that never borrows either.
+   - Hairlines and background shifts do the separating; shadow is spent only on
+     the two things that actually lift off the page (the header, the CTA).
+   - Every status colour is contrast-checked against its own surface in both
+     themes, and each state also ships an icon — red and green are the same
+     colour under deuteranopia, so colour never carries meaning alone. */
+
 :root {
   color-scheme: dark;
-  font-family: system-ui, sans-serif;
-  color: #e8edf5;
-  background: #111827;
+
+  /* Brand: the cobalt of the Innovation & Creativity Lab sign, and the orange
+     the lab prints in. Cobalt is structure; orange is action, and is spent on
+     exactly one control. */
+  /* Brightened until the ordinal chip clears 4.5:1 on --brand-soft; cobalt on
+     its own tint is the tightest pairing in the dark palette. */
+  --brand: #5c99f3;
+  --brand-soft: #15294a;
+  --brand-line: #24406b;
+  /* Cobalt legible on --brand-soft. It differs per theme — the strong tone
+     clears 4.5:1 on the light tint but only 3.2:1 on the dark one — so the
+     choice lives in a token instead of a per-component override. */
+  --brand-on-soft: #5c99f3;
+
+  --accent: #f97316;
+
+  /* Panel header bands are their own tokens, not the generic soft tints. A band
+     has to out-weigh the white rows underneath it or the heading reads as the
+     lightest thing in the panel — so these are pitched deeper than the chip and
+     hover tints that share the same hue. */
+  --band-primary: #17305a;
+  --band-primary-line: #27477a;
+  --band-action: #3d2611;
+  --band-action-line: #5e3d1c;
+
+  /* Secondary buttons sit ON a band, so their fill needs 3:1 against it, not
+     just a legible label. The mid cobalt clears that on the light band but only
+     manages 2.9 on the dark one — so dark flips to a light fill with dark ink,
+     the same trade the CTA already makes. */
+  --brand-btn-bg: #5c99f3;
+  --brand-btn-ink: #08152b;
+
+  --canvas: #081120;
+  --panel: #101d33;
+  --sunken: #16243d;
+  --header: #0a1526;
+
+  --line: #22314c;
+  --line-strong: #31445f;
+
+  --ink: #e9eef8;
+  --ink-muted: #a3b3cd;
+  --ink-faint: #8497b8;
+
+  --cta-ink: #22140a;
+
+  /* State: available / printing / preparing / needs a human / offline */
+  --free-bg: #0e2a1e;   --free-fg: #55d98c;   --free-line: #1c4632;
+  --busy-bg: #14294a;   --busy-fg: #6fb2f7;   --busy-line: #24406b;
+  --wait-bg: #1a2740;   --wait-fg: #a3b3cd;
+  --warn-bg: #2e2410;   --warn-fg: #f2b84c;   --warn-line: #4b3a1a;
+  --dead-bg: #34191d;   --dead-fg: #f78b87;   --dead-line: #53272d;
+
+  --hover: #16243d;
+
+  /* Shadow is a budget, not a default. Two line items only. */
+  --shadow-header: 0 12px 28px -22px rgba(0, 0, 0, 0.95);
+  --cta-grad: linear-gradient(180deg, #fb9146, #f0700f);
+  --cta-grad-hover: linear-gradient(180deg, #fda05d, #f97e21);
+  --shadow-cta: 0 10px 22px -12px rgba(249, 115, 22, 0.7);
+
+  --page-max: 1320px;
+
+  --s1: 4px;
+  --s2: 6px;
+  --s3: 10px;
+  --s4: 14px;
+  --s5: 18px;
+  --s6: 24px;
+
+  --t-xs: 11px;
+  --t-sm: 12px;
+  --t-base: 13px;
+  --t-md: 14px;
+  --t-stat: 32px;
+
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-pill: 999px;
+
+  --font: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; padding: 24px; }
-button, input { font: inherit; }
-button { cursor: pointer; }
-.shell { max-width: 1180px; margin: 0 auto; }
-.dashboard { display: grid; gap: 16px; }
-.panel {
-  padding: 20px;
-  border: 1px solid #334155;
-  border-radius: 10px;
-  background: #1e293b;
+/* Light is selected, not an inversion: the canvas is a cobalt-tinted blue-grey
+   so white panels settle onto it instead of cutting against it. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --brand: #2563eb;
+  --brand-soft: #e4edfe;
+  --brand-line: #c3d8fb;
+  --brand-on-soft: #1d4ed8;
+
+  --accent: #ea580c;
+
+  --band-primary: #cbdcfa;
+  --band-primary-line: #b2cdf7;
+  --band-action: #ffdcc2;
+  --band-action-line: #f9bd93;
+
+  --brand-btn-bg: #1d4ed8;
+  --brand-btn-ink: #ffffff;
+
+  --canvas: #e9eff9;
+  --panel: #ffffff;
+  --sunken: #f3f6fd;
+  --header: #0c1a2e;
+
+  --line: #dae2f2;
+  --line-strong: #c2cee5;
+
+  --ink: #0f1a2e;
+  --ink-muted: #556482;
+  /* Darkened until it clears 4.5:1 on --sunken, not just on white — faint text
+     mostly sits on the tinted bands, so white is the wrong thing to check it on. */
+  --ink-faint: #5f7095;
+
+  --cta-ink: #ffffff;
+
+  --free-bg: #e6f6ec;   --free-fg: #12703a;   --free-line: #bce4ca;
+  --busy-bg: #e4edfe;   --busy-fg: #1a56b8;   --busy-line: #c3d8fb;
+  --wait-bg: #eef1f9;   --wait-fg: #4a5876;
+  --warn-bg: #fdf2df;   --warn-fg: #85510a;   --warn-line: #f3daa8;
+  --dead-bg: #fdebeb;   --dead-fg: #ae1f22;   --dead-line: #f5cbcb;
+
+  --hover: #f3f6fd;
+
+  --shadow-header: 0 12px 28px -24px rgba(9, 20, 40, 0.9);
+  /* White on the lightest stop is 4.65:1 — the button can be vivid and still
+     pass at 14px bold. */
+  --cta-grad: linear-gradient(180deg, #c94c0c, #a83809);
+  --cta-grad-hover: linear-gradient(180deg, #b8420a, #973007);
+  --shadow-cta: 0 10px 22px -12px rgba(168, 56, 9, 0.55);
 }
-.hidden { display: none !important; }
-.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
-.status-free { background: #22c55e; }
-.status-busy { background: #f59e0b; }
-.status-error { background: #ef4444; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--t-base);
+  line-height: 1.45;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] { display: none !important; }
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: var(--s2);
+  z-index: 10;
+  background: var(--panel);
+  color: var(--ink);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+  font-weight: 700;
+}
+.skip-link:focus { left: var(--s3); }
+
+/* ---------- Header ---------- */
+
+/* The one band of deep colour on the page, and the only surface besides the CTA
+   that is allowed to cast. */
+.header {
+  background: linear-gradient(180deg, #14273f, var(--header));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-header);
+  position: relative;
+  z-index: 2;
+}
+
+.header-inner {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  height: 54px;
+  padding: 0 var(--s5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+.brand-wrap { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+/* The identity anchor: lab orange on its own chip, the only warm thing up here,
+   so the eye lands on the brand before the status readouts. */
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 7px;
+  color: #ffb570;
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.3), rgba(249, 115, 22, 0.15));
+  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.36);
+  flex-shrink: 0;
+}
+.brand {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+.brand-context {
+  margin-left: var(--s1);
+  padding-left: var(--s3);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  color: #a8bcda;
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+.header-actions { display: flex; align-items: center; gap: var(--s3); }
+
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: #a8bcda;
+  white-space: nowrap;
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: #55d98c;
+  box-shadow: 0 0 0 3px rgba(85, 217, 140, 0.18);
+}
+.live-indicator[data-state="stale"] .live-dot { background: #f2b84c; box-shadow: 0 0 0 3px rgba(242, 184, 76, 0.18); }
+.live-indicator[data-state="down"] .live-dot { background: #f78b87; box-shadow: 0 0 0 3px rgba(247, 139, 135, 0.18); }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: #a8bcda;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.icon-btn:hover { background: rgba(255, 255, 255, 0.13); color: #ffffff; }
+/* The button shows the theme it switches TO. */
+.icon-btn .icon-moon { display: none; }
+:root[data-theme="light"] .icon-btn .icon-sun { display: none; }
+:root[data-theme="light"] .icon-btn .icon-moon { display: block; }
+
+/* ---------- Layout ---------- */
+
+.page-container {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: var(--s4) var(--s5) var(--s6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-height: calc(100vh - 55px);
+}
+
+/* The shell is capped well short of the viewport. A queue row stretched across
+   1600px puts a name and its numbers half a metre apart — that gap was the
+   "too wide and spaced" complaint, and a narrower column is the whole fix. */
+.grid {
+  display: grid;
+  grid-template-columns: 292px minmax(0, 1fr) 330px;
+  gap: var(--s3);
+  align-items: start;
+}
+.column { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
+
+@media (max-width: 1180px) {
+  .grid { grid-template-columns: 280px minmax(0, 1fr); }
+  .column-farm { grid-column: 1 / -1; }
+}
+@media (max-width: 860px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .column-farm { grid-column: auto; }
+  .brand-context { display: none; }
+  .page-container { padding: var(--s3); }
+}
+
+/* ---------- Stat strip ---------- */
+
+/* One surface split by hairlines, not five floating cards. Five cards above
+   three more cards is card soup, and it made the summary compete with the work
+   instead of introducing it. */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+@media (max-width: 1100px) { .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.stat-tile {
+  padding: var(--s3) var(--s4) var(--s4);
+  border-left: 1px solid var(--line);
+  min-width: 0;
+}
+.stat-tile:first-child { border-left: none; }
+@media (max-width: 1100px) {
+  .stat-tile:nth-child(3n + 1) { border-left: none; }
+  .stat-tile:nth-child(n + 4) { border-top: 1px solid var(--line); }
+}
+@media (max-width: 700px) {
+  .stat-tile { border-left: none; }
+  .stat-tile:nth-child(even) { border-left: 1px solid var(--line); }
+  .stat-tile:nth-child(n + 3) { border-top: 1px solid var(--line); }
+}
+
+.stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
+}
+.stat-label {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Each tile carries its own state tint, so the strip is scannable by colour
+   before a single number is read. */
+.stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+  background: var(--wait-bg);
+  color: var(--wait-fg);
+}
+.stat-tile[data-tone="busy"] .stat-icon { background: var(--busy-bg); color: var(--busy-fg); }
+.stat-tile[data-tone="free"] .stat-icon { background: var(--free-bg); color: var(--free-fg); }
+.stat-tile[data-tone="brand"] .stat-icon { background: var(--brand-soft); color: var(--brand); }
+.stat-value {
+  font-size: var(--t-stat);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+/* Only "needs attention" changes colour, and only when it is non-zero: a number
+   that goes amber is a signal, a number that is always amber is decoration. */
+.stat-tile[data-alert="true"] .stat-value { color: var(--warn-fg); }
+.stat-tile[data-alert="true"] .stat-icon { background: var(--warn-bg); color: var(--warn-fg); }
+.stat-sub {
+  font-size: var(--t-sm);
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+/* ---------- Panels ---------- */
+
+/* No cast shadow. A border plus the canvas shift is the separation; stacking a
+   drop shadow on every card is what makes a dashboard look like a slide deck. */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* The header band is where each panel declares what it is: warm for the one
+   place you make something, cobalt for the places you watch it happen. */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line);
+  background: var(--sunken);
+  flex-shrink: 0;
+}
+.panel-title {
+  font-size: var(--t-md);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.panel-title svg { color: var(--brand); flex-shrink: 0; }
+
+.panel-action .panel-header {
+  background: var(--band-action);
+  border-bottom-color: var(--band-action-line);
+}
+.panel-action .panel-title svg { color: var(--accent); }
+:root[data-theme="light"] .panel-action .panel-title svg { color: #9a3412; }
+
+.panel-primary .panel-header {
+  background: var(--band-primary);
+  border-bottom-color: var(--band-primary-line);
+}
+.panel-primary .panel-title svg { color: var(--brand-on-soft); }
+
+.panel-body {
+  padding: var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  min-height: 0;
+}
+.panel-note {
+  font-size: var(--t-sm);
+  color: var(--ink-faint);
+  line-height: 1.5;
+}
+/* On a tinted header the count must stay in ink — muted grey on a colour field
+   is the fastest way to make a considered palette look accidental. */
+.badge {
+  background: var(--panel);
+  color: var(--ink);
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  font-size: var(--t-xs);
+  font-weight: 800;
+  border: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Form ---------- */
+
+.field-group { display: flex; flex-direction: column; }
+.lab {
+  font-size: var(--t-sm);
+  font-weight: 700;
+  color: var(--ink-muted);
+  margin-bottom: var(--s2);
+}
+#name-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 var(--s3);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  background: var(--sunken);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+#name-input::placeholder { color: var(--ink-faint); font-weight: 600; letter-spacing: 0.12em; }
+#name-input:hover:not(:focus) { border-color: var(--ink-faint); }
+#name-input:focus {
+  background: var(--panel);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+.val-msg {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  margin-top: var(--s2);
+  min-height: 16px;
+}
+.val-msg.valid { color: var(--free-fg); }
+.val-msg.invalid { color: var(--dead-fg); }
+.val-msg.hint { color: var(--ink-faint); font-weight: 500; }
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: var(--t-sm);
+  height: 28px;
+  padding: 0 var(--s3);
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+              box-shadow 0.15s ease, transform 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+/* An explicit disabled surface, not opacity — a half-faded button reads as
+   broken rather than unavailable. The border stays strong so it still reads as
+   a control, just one that is currently off. */
+.btn:disabled, .btn[disabled] {
+  background: var(--sunken);
+  color: var(--ink-faint);
+  border-color: var(--line-strong);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* The only action on the page that makes a physical object, and the only place
+   the orange, the gradient and the cast shadow are spent. It lifts on hover and
+   sinks on press — a flat fill with no shadow is why it read as scenery. */
+.btn-cta {
+  background: var(--cta-grad);
+  color: var(--cta-ink);
+  width: 100%;
+  height: 46px;
+  font-size: var(--t-md);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow: var(--shadow-cta), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+.btn-cta:hover:not(:disabled) {
+  background: var(--cta-grad-hover);
+  transform: translateY(-1px);
+}
+.btn-cta:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.btn-brand {
+  background: var(--brand-btn-bg);
+  color: var(--brand-btn-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.btn-brand:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.btn-brand:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.28); }
+
+.btn-outline {
+  background: var(--panel);
+  color: var(--ink-muted);
+  border-color: var(--line-strong);
+}
+.btn-outline:hover:not(:disabled) { background: var(--sunken); color: var(--ink); border-color: var(--ink-faint); }
+
+.btn-warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-line); }
+.btn-warn:hover:not(:disabled) { background: var(--warn-line); color: var(--ink); }
+
+/* Row actions carry their label. A glyph-only trash can makes the operator
+   guess, and guessing wrong deletes a job — the icon is the scanning aid, the
+   word is the contract. */
+.btn-row {
+  height: 26px;
+  padding: 0 var(--s2);
+  gap: 5px;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  background: var(--panel);
+  color: var(--ink-muted);
+  border-color: var(--line-strong);
+}
+.btn-row svg { flex-shrink: 0; }
+.btn-row:hover:not(:disabled) {
+  background: var(--brand-soft);
+  color: var(--brand-on-soft);
+  border-color: var(--brand-line);
+}
+.btn-row.danger:hover:not(:disabled) { background: var(--dead-bg); color: var(--dead-fg); border-color: var(--dead-fg); }
+.btn-row.warn:hover:not(:disabled) { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-fg); }
+
+.btn:focus-visible,
+.icon-btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* ---------- Switch ---------- */
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  cursor: pointer;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  color: var(--ink-muted);
+  user-select: none;
+}
+:root[data-theme="light"] .panel-primary .switch { color: #33405c; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch-track {
+  width: 30px;
+  height: 17px;
+  border-radius: var(--r-pill);
+  background: var(--line-strong);
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+}
+.switch-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: var(--r-pill);
+  background: #ffffff;
+  transition: transform 0.15s ease;
+}
+.switch input:checked + .switch-track { background: var(--brand-btn-bg); }
+/* The thumb takes the button's ink for the same reason the button does: on the
+   bright dark-theme track a white thumb only manages 2.9:1. */
+.switch input:checked + .switch-track .switch-thumb {
+  transform: translateX(13px);
+  background: var(--brand-btn-ink);
+}
+.switch input:focus-visible + .switch-track { outline: 2px solid var(--brand); outline-offset: 2px; }
+.switch:has(input:checked) .switch-label { color: var(--ink); }
+
+/* ---------- Feedback ---------- */
+
+.feedback {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  line-height: 1.5;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid transparent;
+}
+.feedback.success { background: var(--free-bg); color: var(--free-fg); border-color: var(--free-line); }
+.feedback.error { background: var(--dead-bg); color: var(--dead-fg); border-color: var(--dead-line); }
+.feedback.info { background: var(--busy-bg); color: var(--busy-fg); border-color: var(--busy-line); }
+
+/* ---------- Sections & rows ---------- */
+
+.section { display: flex; flex-direction: column; }
+.section + .section { margin-top: var(--s4); }
+/* A banded sub-head, full-bleed with rules above and below — this is what gives
+   the list actual divisions instead of floating labels. */
+.section-title {
+  font-size: var(--t-xs);
+  font-weight: 800;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  background: var(--sunken);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: var(--s2) var(--s4);
+  margin: 0 calc(var(--s4) * -1);
+}
+.section:first-child .section-title { border-top: none; }
+.section-count {
+  margin-left: auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+/* Rows are full-bleed inside the panel: a bordered list inside a bordered panel
+   is a frame inside a frame, which is most of what read as clutter. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0 calc(var(--s4) * -1);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s4);
+  min-width: 0;
+}
+.row + .row,
+.row-error + .row { border-top: 1px solid var(--line); }
+.row:hover { background: var(--hover); }
+
+/* Fixed-width lead and right-aligned numeric cells: columns line up down the
+   list, which is what makes tabular data look designed rather than typed. */
+.row-lead {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  flex: 1;
+}
+.row-ordinal,
+.row-tick {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  font-size: var(--t-xs);
+  font-weight: 800;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Queue position is a real ordinal, so it gets a chip; the completed tick is a
+   state, so it stays a bare glyph. */
+.row-ordinal {
+  background: var(--brand-soft);
+  color: var(--brand-on-soft);
+  border-radius: var(--r-sm);
+}
+.row-tick { color: var(--free-fg); }
+.row-name {
+  font-weight: 800;
+  font-size: var(--t-md);
+  color: var(--ink);
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+}
+/* Which machine ran it — a fact about the job, so it sits with the name rather
+   than off in the numeric columns. */
+.row-chip {
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--ink-muted);
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 0 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.row-meta {
+  font-size: var(--t-sm);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  display: flex;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.row-meta .cell { text-align: right; padding-left: var(--s3); }
+.cell-time { width: 62px; }
+.cell-age { width: 60px; color: var(--ink-faint); }
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  flex-shrink: 0;
+  padding-left: var(--s4);
+}
+.row-error {
+  font-size: var(--t-sm);
+  color: var(--dead-fg);
+  padding: 0 var(--s4) var(--s2) var(--s4);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+  .row { flex-wrap: wrap; }
+  .row-meta { margin-left: 0; width: 100%; order: 3; }
+}
+
+/* ---------- Status pills ---------- */
+
+/* No outline — the tinted fill is already the boundary, and one less stroke per
+   row adds up across a full queue. */
+.pill {
+  font-size: var(--t-xs);
+  font-weight: 800;
+  padding: 2px var(--s2);
+  border-radius: var(--r-pill);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.pill svg { flex-shrink: 0; }
+.pill.free { background: var(--free-bg); color: var(--free-fg); }
+.pill.busy { background: var(--busy-bg); color: var(--busy-fg); }
+.pill.preparing, .pill.sending { background: var(--wait-bg); color: var(--wait-fg); }
+.pill.paused, .pill.needs_clearing { background: var(--warn-bg); color: var(--warn-fg); }
+.pill.failed, .pill.offline { background: var(--dead-bg); color: var(--dead-fg); }
+
+/* ---------- Printer rows ---------- */
+
+.printer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  min-width: 0;
+}
+.printer + .printer { border-top: 1px solid var(--line); }
+.printer:hover { background: var(--hover); }
+.printer-head { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.printer-avatar {
+  width: 27px;
+  height: 27px;
+  border-radius: var(--r-sm);
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-line);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: var(--t-sm);
+  color: var(--brand-on-soft);
+  flex-shrink: 0;
+}
+.printer-id { display: flex; flex-direction: column; min-width: 0; }
+.printer-name { font-weight: 800; font-size: var(--t-base); color: var(--ink); }
+.printer-ip { font-size: var(--t-xs); color: var(--ink-faint); font-family: var(--mono); }
+.printer-head .pill { margin-left: auto; }
+.printer-job {
+  font-size: var(--t-sm);
+  color: var(--ink-faint);
+  overflow-wrap: anywhere;
+  padding-left: calc(27px + var(--s3));
+}
+
+.progress-row { display: flex; align-items: center; gap: var(--s2); padding-left: calc(27px + var(--s3)); }
+.progress-track {
+  background: var(--sunken);
+  border-radius: var(--r-pill);
+  height: 6px;
+  overflow: hidden;
+  flex: 1;
+  border: 1px solid var(--line);
+}
+.progress-fill {
+  background: var(--busy-fg);
+  height: 100%;
+  border-radius: var(--r-pill);
+  transition: width 0.4s ease;
+}
+.progress-value {
+  font-size: var(--t-xs);
+  font-weight: 800;
+  color: var(--busy-fg);
+  font-variant-numeric: tabular-nums;
+  min-width: 30px;
+  text-align: right;
+}
+
+.assign-row { display: flex; gap: var(--s2); padding-left: calc(27px + var(--s3)); }
+.assign-select {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--sunken);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--t-sm);
+  padding: 0 var(--s2);
+}
+
+/* ---------- Empty states ---------- */
+
+/* No dashed box. A bordered placeholder inside a bordered panel is a card
+   inside a card, and it drew more attention empty than the list does full. */
+.empty {
+  font-size: var(--t-sm);
+  color: var(--ink-faint);
+  padding: var(--s6) var(--s3);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+}
+.empty svg { color: var(--line-strong); margin-bottom: var(--s2); }
+.empty strong { color: var(--ink-muted); font-weight: 800; font-size: var(--t-base); }
+
+/* ---------- Preview ---------- */
+
+.preview-frame {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+.preview-frame img { display: block; width: 100%; height: 190px; object-fit: contain; }
+.preview-name { color: var(--ink-muted); font-size: var(--t-sm); font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
