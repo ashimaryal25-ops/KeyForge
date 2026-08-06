@@ -927,3 +927,23 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+@media (max-width: 620px) {
+  .btn,
+  .icon-btn,
+  input,
+  select { min-height: 44px; }
+}
+
+@media (prefers-contrast: more) {
+  :root { --line: #718096; --line-strong: #a0aec0; }
+  .pill, .btn, .panel { border-width: 2px; }
+}
+
+@media (forced-colors: active) {
+  .status-dot,
+  .live-dot { forced-color-adjust: none; border: 1px solid CanvasText; }
+  .pill,
+  .btn,
+  .panel { border: 1px solid CanvasText; }
+}
