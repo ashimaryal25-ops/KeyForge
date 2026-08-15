@@ -156,7 +156,7 @@ function showDashboardFeedback(msg, type = 'error') {
   dashboardFeedbackTimer = setTimeout(() => {
     dashboardFeedback.hidden = true;
     dashboardFeedback.textContent = '';
-  }, type === 'error' ? 8000 : 4000);
+  }, type === 'error' ? 12000 : 8000);
 }
 
 function showPreview(name) {
@@ -380,6 +380,14 @@ function renderPrinters(printers, queue = []) {
     el.innerHTML = empty('No printers yet', 'Run a scan to find printers on your network.');
     return;
   }
+
+  // Preserve dropdown selections across poll re-renders so the user's pick
+  // doesn't vanish mid-thought.
+  const savedSelections = {};
+  el.querySelectorAll('.assign-select').forEach((sel) => {
+    if (sel.value) savedSelections[sel.dataset.ip] = sel.value;
+  });
+
   el.className = 'rows';
   el.innerHTML = printers.map((p) => {
     const st = p.status || 'error';
@@ -397,8 +405,6 @@ function renderPrinters(printers, queue = []) {
         '</span>' +
         pill(state.cls, state.glyph, state.label) +
       '</div>' +
-      // When a printer is offline the "job" field is just the probe's excuse
-      // ("unreachable"); the pill already says that, so don't repeat it.
       (p.job && p.job !== '-' && state !== OFFLINE_STATE
         ? '<div class="printer-job">' + escapeHtml(p.job) + '</div>'
         : '') +
@@ -418,13 +424,21 @@ function renderPrinters(printers, queue = []) {
             '<select class="assign-select" data-ip="' + escapeHtml(p.ip) + '" aria-label="Job to assign to printer ' + escapeHtml(p.id) + '"' + (queue.length === 0 ? ' disabled' : '') + '>' +
               (queue.length === 0
                 ? '<option value="">No queued jobs</option>'
-                : queue.map((j) => '<option value="' + escapeHtml(j.id) + '">' + escapeHtml(j.name) + '</option>').join('')) +
+                : '<option value="" disabled selected>Select from queue</option>' + queue.map((j) => '<option value="' + escapeHtml(j.id) + '">' + escapeHtml(j.name) + '</option>').join('')) +
             '</select>' +
             '<button data-action="assign" data-ip="' + escapeHtml(p.ip) + '" class="btn btn-outline"' + (queue.length === 0 ? ' disabled' : '') + '>Assign</button>' +
           '</div>'
         : '') +
     '</div>';
   }).join('');
+
+  // Restore saved selections
+  el.querySelectorAll('.assign-select').forEach((sel) => {
+    const saved = savedSelections[sel.dataset.ip];
+    if (saved && sel.querySelector('option[value="' + saved + '"]')) {
+      sel.value = saved;
+    }
+  });
 }
 
 /* ---------- actions ---------- */

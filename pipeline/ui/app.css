@@ -16,9 +16,7 @@
 :root {
   color-scheme: dark;
 
-  /* Brand: the cobalt of the Innovation & Creativity Lab sign, and the orange
-     the lab prints in. Cobalt is structure; orange is action, and is spent on
-     exactly one control. */
+  /* Cobalt is structure; green marks the create-and-preview workflow. */
   /* Brightened until the ordinal chip clears 4.5:1 on --brand-soft; cobalt on
      its own tint is the tightest pairing in the dark palette. */
   --brand: #5c99f3;
@@ -37,8 +35,8 @@
      hover tints that share the same hue. */
   --band-primary: #17305a;
   --band-primary-line: #27477a;
-  --band-action: #3d2611;
-  --band-action-line: #5e3d1c;
+  --band-action: #103321;
+  --band-action-line: #1e5d39;
 
   /* Secondary buttons sit ON a band, so their fill needs 3:1 against it, not
      just a legible label. The mid cobalt clears that on the light band but only
@@ -59,22 +57,23 @@
   --ink-muted: #a3b3cd;
   --ink-faint: #8497b8;
 
-  --cta-ink: #22140a;
+  --cta-ink: #052e16;
 
   /* State: available / printing / preparing / needs a human / offline */
   --free-bg: #0e2a1e;   --free-fg: #55d98c;   --free-line: #1c4632;
   --busy-bg: #14294a;   --busy-fg: #6fb2f7;   --busy-line: #24406b;
   --wait-bg: #1a2740;   --wait-fg: #a3b3cd;
   --warn-bg: #2e2410;   --warn-fg: #f2b84c;   --warn-line: #4b3a1a;
+  --warn-action-bg: #d97706;   --warn-action-hover: #b45309;   --warn-action-fg: #fff7ed;
   --dead-bg: #34191d;   --dead-fg: #f78b87;   --dead-line: #53272d;
 
   --hover: #16243d;
 
   /* Shadow is a budget, not a default. Two line items only. */
   --shadow-header: 0 12px 28px -22px rgba(0, 0, 0, 0.95);
-  --cta-grad: linear-gradient(180deg, #fb9146, #f0700f);
-  --cta-grad-hover: linear-gradient(180deg, #fda05d, #f97e21);
-  --shadow-cta: 0 10px 22px -12px rgba(249, 115, 22, 0.7);
+  --cta-bg: #22c55e;
+  --cta-bg-hover: #4ade80;
+  --shadow-cta: 0 10px 22px -12px rgba(34, 197, 94, 0.55);
 
   --page-max: 1320px;
 
@@ -111,10 +110,10 @@
 
   --accent: #ea580c;
 
-  --band-primary: #cbdcfa;
-  --band-primary-line: #b2cdf7;
-  --band-action: #ffdcc2;
-  --band-action-line: #f9bd93;
+  --band-primary: #adc9f7;
+  --band-primary-line: #83aaeb;
+  --band-action: #bde9cf;
+  --band-action-line: #8bd0a9;
 
   --brand-btn-bg: #1d4ed8;
   --brand-btn-ink: #ffffff;
@@ -139,16 +138,15 @@
   --busy-bg: #e4edfe;   --busy-fg: #1a56b8;   --busy-line: #c3d8fb;
   --wait-bg: #eef1f9;   --wait-fg: #4a5876;
   --warn-bg: #fdf2df;   --warn-fg: #85510a;   --warn-line: #f3daa8;
+  --warn-action-bg: #b45309;   --warn-action-hover: #92400e;   --warn-action-fg: #ffffff;
   --dead-bg: #fdebeb;   --dead-fg: #ae1f22;   --dead-line: #f5cbcb;
 
   --hover: #f3f6fd;
 
   --shadow-header: 0 12px 28px -24px rgba(9, 20, 40, 0.9);
-  /* White on the lightest stop is 4.65:1 — the button can be vivid and still
-     pass at 14px bold. */
-  --cta-grad: linear-gradient(180deg, #c94c0c, #a83809);
-  --cta-grad-hover: linear-gradient(180deg, #b8420a, #973007);
-  --shadow-cta: 0 10px 22px -12px rgba(168, 56, 9, 0.55);
+  --cta-bg: #15803d;
+  --cta-bg-hover: #166534;
+  --shadow-cta: 0 10px 22px -12px rgba(21, 128, 61, 0.5);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -403,8 +401,8 @@ body {
   overflow: hidden;
 }
 
-/* The header band is where each panel declares what it is: warm for the one
-   place you make something, cobalt for the places you watch it happen. */
+/* The header band marks the create-and-preview workflow in green and the
+   operational lists in cobalt. */
 .panel-header {
   display: flex;
   align-items: center;
@@ -430,8 +428,7 @@ body {
   background: var(--band-action);
   border-bottom-color: var(--band-action-line);
 }
-.panel-action .panel-title svg { color: var(--accent); }
-:root[data-theme="light"] .panel-action .panel-title svg { color: #9a3412; }
+.panel-action .panel-title svg { color: var(--free-fg); }
 
 .panel-primary .panel-header {
   background: var(--band-primary);
@@ -539,11 +536,10 @@ body {
   pointer-events: none;
 }
 
-/* The only action on the page that makes a physical object, and the only place
-   the orange, the gradient and the cast shadow are spent. It lifts on hover and
-   sinks on press — a flat fill with no shadow is why it read as scenery. */
+/* The only action on the page that creates a job uses a solid success green.
+   It lifts on hover and sinks on press so it reads as the primary control. */
 .btn-cta {
-  background: var(--cta-grad);
+  background: var(--cta-bg);
   color: var(--cta-ink);
   width: 100%;
   height: 46px;
@@ -553,7 +549,7 @@ body {
   box-shadow: var(--shadow-cta), inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 .btn-cta:hover:not(:disabled) {
-  background: var(--cta-grad-hover);
+  background: var(--cta-bg-hover);
   transform: translateY(-1px);
 }
 .btn-cta:active:not(:disabled) {
@@ -576,8 +572,14 @@ body {
 }
 .btn-outline:hover:not(:disabled) { background: var(--sunken); color: var(--ink); border-color: var(--ink-faint); }
 
-.btn-warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-line); }
-.btn-warn:hover:not(:disabled) { background: var(--warn-line); color: var(--ink); }
+.btn-warn {
+  background: var(--warn-action-bg);
+  color: var(--warn-action-fg);
+  border-color: var(--warn-action-hover);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.btn-warn:hover:not(:disabled) { background: var(--warn-action-hover); }
+.btn-warn:active:not(:disabled) { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25); }
 
 /* Row actions carry their label. A glyph-only trash can makes the operator
    guess, and guessing wrong deletes a job — the icon is the scanning aid, the
