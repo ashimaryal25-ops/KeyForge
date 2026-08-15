@@ -179,7 +179,6 @@ The tests cover model metadata, discovery, server endpoints, queue persistence, 
 | `pipeline/farm-status.mjs` | Command-line printer status utility. |
 | `pipeline/printer-probe.mjs` | Read-only probe for stock HTTP and Moonraker endpoints. |
 | `pipeline/ui/` | Dependency-free dashboard interface. |
-| `pipeline/UNDERSTANDING.md` | A deeper walkthrough of the modeling and printer-control decisions. |
 
 ## Current scope
 
