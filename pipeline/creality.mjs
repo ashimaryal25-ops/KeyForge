@@ -51,15 +51,34 @@ export function startPrint(ip, filename, gcodeDir = GCODE_DIR) {
 // optional: poll status to confirm the print actually started (printFileName matches)
 export function confirmPrinting(ip, filename, timeoutMs = 12000) {
   return new Promise((resolve) => {
-    let settled = false, ws;
-    const done = (ok) => { if (settled) return; settled = true; clearTimeout(timer); try { ws?.close(); } catch {} resolve(ok); };
+    let settled = false, ws, pollTimer;
+    const reported = {};
+    const expectedFilename = path.basename(filename).toLowerCase();
+    const done = (ok) => { if (settled) return; settled = true; clearTimeout(timer); clearInterval(pollTimer); try { ws?.close(); } catch {} resolve(ok); };
     const timer = setTimeout(() => done(false), timeoutMs);
     try { ws = new WebSocket(`ws://${ip}:9999/`); } catch { return done(false); }
+    const requestStatus = () => {
+      if (ws.readyState === undefined || ws.readyState === 1) {
+        ws.send(JSON.stringify({ method: "get", params: { reqPrintObjects: {} } }));
+      }
+    };
+    ws.addEventListener("open", () => {
+      requestStatus();
+      pollTimer = setInterval(requestStatus, 1000);
+    });
     ws.addEventListener("message", (ev) => {
       const t = typeof ev.data === "string" ? ev.data : "";
       if (!t || t === "ok") return;
       let m; try { m = JSON.parse(t); } catch { return; }
-      if (m.printFileName && String(m.printFileName).includes(filename)) done(true);
+      if (m.printFileName !== undefined) reported.printFileName = m.printFileName;
+      if (m.deviceState !== undefined) reported.deviceState = m.deviceState;
+      if (m.printState !== undefined) reported.printState = m.printState;
+      if (m.state !== undefined) reported.state = m.state;
+
+      const reportedFilename = path.basename(String(reported.printFileName || "")).toLowerCase();
+      const state = reported.printState ?? reported.state ?? reported.deviceState;
+      const isPrinting = Number(state) === 1 || ["print", "printing"].includes(String(state ?? "").toLowerCase());
+      if (isPrinting && reportedFilename === expectedFilename) done(true);
     });
     ws.addEventListener("error", () => done(false));
   });

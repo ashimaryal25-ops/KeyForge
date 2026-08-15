@@ -158,22 +158,25 @@ test("startPrint rejects on socket error and on timeout, never resolves silently
 
 /* ---------- confirmPrinting ---------- */
 
-test("confirmPrinting only confirms when the printer names the file it is running", async () => {
+test("confirmPrinting polls status and confirms the expected file is actually printing", async () => {
   const realWs = globalThis.WebSocket;
   globalThis.WebSocket = FakeWebSocket;
 
   try {
     const promise = confirmPrinting("10.0.0.5", "kf_ashim.gcode", 2000);
     const ws = FakeWebSocket.last;
+    ws.emit("open");
+    assert.deepEqual(JSON.parse(ws.sent[0]), { method: "get", params: { reqPrintObjects: {} } });
 
     // Noise the socket really sends, none of which is a confirmation.
     ws.emit("message", { data: "ok" });
     ws.emit("message", { data: "not json at all" });
     ws.emit("message", { data: JSON.stringify({ ModeCode: "heart_beat" }) });
-    ws.emit("message", { data: JSON.stringify({ printFileName: "someone_elses.gcode" }) });
+    ws.emit("message", { data: JSON.stringify({ printFileName: "someone_elses.gcode", deviceState: 1 }) });
 
-    ws.emit("message", { data: JSON.stringify({ printFileName: "/usr/data/printer_data/gcodes/kf_ashim.gcode" }) });
-    assert.equal(await promise, true, "matches on a full path containing our filename");
+    ws.emit("message", { data: JSON.stringify({ printFileName: "/usr/data/printer_data/gcodes/kf_ashim.gcode", deviceState: 0 }) });
+    ws.emit("message", { data: JSON.stringify({ deviceState: 1 }) });
+    assert.equal(await promise, true, "combines split telemetry and requires the printing state");
     assert.equal(ws.closed, true);
   } finally {
     globalThis.WebSocket = realWs;
@@ -208,7 +211,7 @@ test("uploadAndPrint runs upload -> start -> confirm in order and reports both r
       // Answer on the next tick so the awaits in uploadAndPrint actually run.
       setImmediate(() => {
         this.emit("open");
-        this.emit("message", { data: JSON.stringify({ printFileName: "kf_ashim.gcode" }) });
+        this.emit("message", { data: JSON.stringify({ printFileName: "kf_ashim.gcode", deviceState: 1 }) });
       });
     }
   };
