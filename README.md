@@ -86,17 +86,25 @@ Generated STL and G-code files are written to `pipeline/out/`. Queue state is st
 | Printer farm | Shows live printer state and provides manual assignment or bed-clear controls. |
 | Scan network | Searches the current private `/24` subnet for printers exposing the Creality status socket. |
 
-Printer addresses are deliberately not persisted. The farm commonly runs on DHCP, so saved addresses can become incorrect after a printer or hotspot restarts. Run another scan whenever the network changes.
+Printer addresses are not saved. The farm usually runs on DHCP (often a laptop hotspot), so a stored IP can be wrong after a printer or hotspot restarts. Scan again when the network changes.
 
 ## Run the pipeline without a printer
 
 This generates an STL and G-code file but does not upload anything:
 
 ```powershell
-node pipeline\print-name.mjs NOVA --dry-run
+node pipeline\print-name.mjs NOVA
 ```
 
 Names must contain 2–10 letters or digits. Output is placed in `pipeline/out/`.
+
+To upload an existing G-code file to a stock printer:
+
+```powershell
+node pipeline\creality.mjs 192.168.137.63 pipeline\out\kf_nova.gcode
+```
+
+That last command starts a real print. Check that the target printer and its bed are ready first.
 
 ## Printer utilities
 
@@ -112,14 +120,6 @@ Add `--raw` to inspect the telemetry returned by the printer:
 node pipeline\farm-status.mjs --raw 192.168.137.63
 ```
 
-Upload an existing G-code file, start it, and confirm the printer accepted it:
-
-```powershell
-node pipeline\creality.mjs 192.168.137.63 pipeline\out\kf_nova.gcode
-```
-
-This last command starts a real print. Check that the target printer and its bed are ready before running it.
-
 ## Configuration
 
 The default paths match a standard Windows installation. Override them for a different installation or operating system.
@@ -132,7 +132,6 @@ The default paths match a standard Windows installation. Override them for a dif
 | `PRINTER_STALE_MS` | `180000` | Time before an unreachable, inactive printer is removed from the farm view. |
 | `GCODE_DIR` | `/usr/data/printer_data/gcodes` | G-code directory used by stock Creality firmware. |
 | `HTTP_PORT` | empty | Optional nonstandard printer upload port. |
-| `PRINTER_URL` | `http://192.168.1.50:7125` | Moonraker URL used only by the standalone `print-name.mjs` upload path. |
 
 Example for the current PowerShell session:
 
@@ -171,13 +170,13 @@ The tests cover model metadata, discovery, server endpoints, queue persistence, 
 | --- | --- |
 | `pipeline/server.mjs` | Local HTTP server, dashboard API, preview rendering, and network discovery. |
 | `pipeline/workflow.mjs` | Persistent queue, printer state machine, dispatch, completion, failure, and bed-clear logic. |
-| `pipeline/print-name.mjs` | Name validation, OpenSCAD generation, geometry validation, slicing, and Creality metadata. |
+| `pipeline/print-name.mjs` | Name validation, OpenSCAD generation, geometry validation, and slicing. |
 | `pipeline/keychain.scad` | Parametric keychain model. |
 | `pipeline/keyforge.ini` | PrusaSlicer profile for the Ender 3 V3 KE. |
 | `pipeline/creality.mjs` | Stock firmware upload, print start, and start confirmation. |
 | `pipeline/discovery.mjs` | Safe private-subnet scanning and stable printer labels. |
 | `pipeline/farm-status.mjs` | Command-line printer status utility. |
-| `pipeline/printer-probe.mjs` | Read-only probe for stock HTTP and Moonraker endpoints. |
+| `pipeline/printer-probe.mjs` | Read-only check that the stock web UI answers. |
 | `pipeline/ui/` | Dependency-free dashboard interface. |
 
 ## Current scope

@@ -1,13 +1,10 @@
-// Grab the printer's stock web UI + its JS/CSS bundles to local files.
-// This is how we get the upload + start-print syntax: the web UI's own code does both,
-// so its JavaScript contains the exact calls we need to replicate.
+// Download the printer's stock web UI and its JS/CSS so the upload and
+// start-print calls can be read from the same code the printer already runs.
 //
-//   node pipeline/grab-printer-ui.mjs 10.158.163.29
+//   node pipeline/grab-printer-ui.mjs 192.168.137.63
 //
-// IMPORTANT: run this while your laptop is on the PRINTER's network (the hotspot).
-// It needs the printer reachable but NOT the internet — so the no-internet hotspot is fine.
-// It saves everything to pipeline/printer-ui/. Afterwards switch back to wifi and tell the
-// assistant to read pipeline/printer-ui/ — it'll pull out the upload + start commands.
+// Run this on the printer network (laptop hotspot is fine). Files land in
+// pipeline/printer-ui/, which is gitignored.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -15,7 +12,7 @@ import path from "node:path";
 const ip = process.argv[2];
 if (!ip) {
   console.error("usage: node pipeline/grab-printer-ui.mjs <printer-ip>");
-  console.error("example: node pipeline/grab-printer-ui.mjs 10.158.163.29");
+  console.error("example: node pipeline/grab-printer-ui.mjs 192.168.137.63");
   process.exit(1);
 }
 
@@ -40,7 +37,6 @@ try {
 writeFileSync(path.join(outDir, "index.html"), html);
 console.log(`saved index.html (${html.length} bytes)`);
 
-// collect referenced js/css assets from the HTML
 const assets = new Set();
 for (const m of html.matchAll(/(?:src|href)\s*=\s*["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']/gi)) {
   assets.add(m[1].split("?")[0]);
@@ -62,4 +58,3 @@ for (const a of assets) {
 }
 
 console.log(`\ndone - ${saved} asset(s) in pipeline/printer-ui/`);
-console.log("now switch back to wifi and tell the assistant: read pipeline/printer-ui/");

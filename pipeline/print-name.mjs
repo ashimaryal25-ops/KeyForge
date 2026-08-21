@@ -1,11 +1,12 @@
-// KeyForge pipeline: name -> STL (OpenSCAD) -> G-code (PrusaSlicer) -> printer (Moonraker HTTP upload)
+// KeyForge pipeline: name -> STL (OpenSCAD) -> G-code (PrusaSlicer)
 //
-// usage:  node print-name.mjs MAYA --start    generate + slice + upload + start print
-//         node print-name.mjs MAYA            generate + slice + upload only
-//         node print-name.mjs MAYA --dry-run  generate + slice only (no printer needed)
+// usage:  node print-name.mjs MAYA
+//
+// To upload to a stock printer after slicing:
+//   node pipeline/creality.mjs <printer-ip> pipeline/out/kf_maya.gcode
 //
 // config via env vars, or edit the defaults below:
-//   PRINTER_URL=http://192.168.1.50:7125
+//   OPENSCAD, SLICER
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -14,19 +15,15 @@ import { pathToFileURL } from "node:url";
 
 const OPENSCAD = process.env.OPENSCAD ?? String.raw`C:\Program Files\OpenSCAD\openscad.com`;
 const SLICER = process.env.SLICER ?? String.raw`C:\Program Files\Prusa3D\PrusaSlicer\prusa-slicer-console.exe`;
-const PRINTER_URL = process.env.PRINTER_URL ?? "http://192.168.1.50:7125";
 
 const here = import.meta.dirname;
 const SCAD = path.join(here, "keychain.scad");
 
-// Everything below runs only when this file is the command being run — the same
-// guard creality.mjs uses, i.e. Python's `if __name__ == "__main__":`. Without
+// Everything below runs only when this file is the command being run. Without
 // it, importing this module to reach the parsing helpers underneath would spawn
 // OpenSCAD and call process.exit() as a side effect of the import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = process.argv.slice(2);
-  const dryRun = args.includes("--dry-run");
-  const startPrint = args.includes("--start");
   const name = args.filter((a) => !a.startsWith("--")).join(" ").trim().toUpperCase();
 
   // Letters and digits only. This keeps the OpenSCAD -D argument injection-safe and
@@ -49,7 +46,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "_");
   const stl = path.join(outDir, `${slug}.stl`);
   const gcode = path.join(outDir, `kf_${slug}.gcode`);
-  console.log(`[1/3] OpenSCAD: "${name}" -> ${path.basename(stl)}`);
+  console.log(`[1/2] OpenSCAD: "${name}" -> ${path.basename(stl)}`);
   const scad = spawnSync(OPENSCAD, ["-o", stl, "-D", `name="${name}"`, SCAD], {
     encoding: "utf8",
   });
@@ -66,41 +63,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
   console.log("geometry check passed: one connected solid");
 
-  console.log(`[2/3] slicing -> ${path.basename(gcode)}`);
+  console.log(`[2/2] slicing -> ${path.basename(gcode)}`);
   execFileSync(SLICER, ["--export-gcode", "--load", PROFILE, "--center", "110,110", "--output", gcode, stl], {
     stdio: "inherit",
   });
   addCrealityMetadata(gcode);
-
-  if (dryRun) {
-    console.log(`dry run done - open ${gcode} in the slicer GUI to preview before trusting it`);
-    process.exit(0);
-  }
-
-  console.log(`[3/3] uploading to ${PRINTER_URL}${startPrint ? " and starting print" : ""}`);
-  const info = await fetch(`${PRINTER_URL}/server/info`).catch((error) => error);
-  if (info instanceof Error || !info.ok) {
-    const detail = info instanceof Error ? info.message : `HTTP ${info.status} - ${await info.text()}`;
-    console.error(`printer preflight failed: ${detail}`);
-    console.error(`check the IP, then run: node pipeline/printer-probe.mjs ${PRINTER_URL}`);
-    process.exit(1);
-  }
-
-  const form = new FormData();
-  form.append("file", new Blob([readFileSync(gcode)]), path.basename(gcode));
-  form.append("print", startPrint ? "true" : "false");
-
-  const res = await fetch(`${PRINTER_URL}/server/files/upload`, { method: "POST", body: form });
-  if (!res.ok) {
-    console.error(`upload failed: HTTP ${res.status} - ${await res.text()}`);
-    process.exit(1);
-  }
-
-  const payload = await res.json();
-  console.log("accepted:", JSON.stringify(payload));
-  if (!startPrint) {
-    console.log("uploaded only. To start automatically, rerun with --start after confirming the bed is clear.");
-  }
+  console.log(`done - ${gcode}`);
+  console.log(`upload with: node pipeline/creality.mjs <printer-ip> ${gcode}`);
 }
 
 export function addCrealityMetadata(filePath) {

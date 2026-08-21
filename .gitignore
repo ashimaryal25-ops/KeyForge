@@ -2,11 +2,10 @@
 node_modules/
 dist/
 
-# generated print artifacts — regenerated from any name, no need to track
+# generated print artifacts
 pipeline/out/
 
-# the printer's OWN web app, downloaded only to read its protocol.
-# This is Creality's proprietary code — kept locally for reference, never redistributed.
+# printer's own web app, downloaded locally to read the protocol. not redistributed.
 pipeline/printer-ui/
 
 # OS / editor cruft
@@ -14,7 +13,7 @@ pipeline/printer-ui/
 Thumbs.db
 *.log
 
-# superseded React UI prototype + old render (local only, not part of the repo)
+# superseded React UI prototype (local only)
 /src/
 /index.html
 /package.json
@@ -25,6 +24,3 @@ Thumbs.db
 /keyforge-home.png
 /keyforge-after-submit.png
 /docs/keychain.png
-
-# Local Codex work log; never commit or push.
-/CODEX_CHANGES.md
